@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#16161a">
+<title>HTML.run</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #16161a;
+    --border: #2a2a32;
+    --accent: #ff5c35;
+    --accent2: #ffcc00;
+    --text: #e8e6e3;
+    --muted: #6b6b7a;
+    --code-bg: #111114;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .btn-clear {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+  .btn-run {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-run:hover { background: #ff3a14; }
+  .btn-run:active { transform: scale(0.95); }
+
+  .play-icon {
+    width: 0; height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 9px solid white;
+  }
+
+  /* ============================================
+     MÓVIL: tabs arriba, paneles apilados
+  ============================================ */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .tab {
+    padding: 10px 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    user-select: none;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panels-mobile {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel-mobile {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+  }
+  .panel-mobile.active { display: flex; }
+
+  /* ============================================
+     PC: layout lado a lado tipo VS Code
+  ============================================ */
+  .panels-desktop {
+    display: none; /* oculto en móvil */
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+  }
+
+  .pane-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .pane-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .pane-title.code { color: #a8e6cf; }
+  .pane-title.preview { color: var(--accent); }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.red { background: #ff5f57; }
+  .dot.yellow { background: #febc2e; }
+  .dot.green { background: #28c840; }
+
+  .divider {
+    width: 4px;
+    background: var(--border);
+    cursor: col-resize;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .divider:hover { background: var(--accent); }
+
+  /* EDITOR compartido */
+  textarea {
+    flex: 1;
+    background: var(--code-bg);
+    color: #a8e6cf;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.83rem;
+    line-height: 1.75;
+    width: 100%;
+    caret-color: var(--accent);
+    tab-size: 2;
+  }
+  textarea::placeholder { color: var(--muted); opacity: 1; }
+
+  /* PREVIEW compartido */
+  iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+  }
+
+  .preview-empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    text-align: center;
+    padding: 40px;
+  }
+  .preview-empty .icon { font-size: 3rem; opacity: 0.2; }
+  .preview-empty strong { color: var(--accent); }
+
+  /* STATUSBAR */
+  .statusbar {
+    flex-shrink: 0;
+    background: var(--accent);
+    color: rgba(255,255,255,0.85);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 4px 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--accent2);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 10px 22px;
+    border-radius: 30px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+    z-index: 999;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ============================================
+     RESPONSIVE: PC = +768px
+  ============================================ */
+  @media (min-width: 768px) {
+    .tabs { display: none; }
+    .panels-mobile { display: none; }
+    .panels-desktop {
+      display: flex;
+      flex-direction: row;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">HTML<span>.</span>run</div>
+    <div class="header-actions">
+      <button class="btn-clear" onclick="clearCode()">Limpiar</button>
+      <button class="btn-run" onclick="runCode()">
+        <span class="play-icon"></span> Ejecutar
+      </button>
+    </div>
+  </header>
+
+  <!-- MÓVIL: tabs -->
+  <div class="tabs">
+    <div class="tab active" id="tab-code" onclick="showTab('code')">Código</div>
+    <div class="tab" id="tab-preview" onclick="showTab('preview')">Vista previa</div>
+  </div>
+
+  <div class="panels-mobile">
+    <div class="panel-mobile active" id="panel-code">
+      <textarea id="editor-mobile" placeholder="<!-- Pega tu HTML aquí y pulsa Ejecutar -->" spellcheck="false"></textarea>
+    </div>
+    <div class="panel-mobile" id="panel-preview">
+      <div class="preview-empty" id="emptyMobile">
+        <div class="icon">▶</div>
+        <p>Pulsa <strong>Ejecutar</strong> para ver el resultado.</p>
+      </div>
+      <iframe id="frame-mobile" style="display:none;"></iframe>
+    </div>
+  </div>
+
+  <!-- PC: lado a lado -->
+  <div class="panels-desktop" id="desktopPanels">
+
+    <div class="pane" id="paneEditor">
+      <div class="pane-header">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+        <span class="pane-title code">index.html</span>
+      </div>
+      <textarea id="editor-desktop" placeholder="<!-- Pega tu HTML aquí y pulsa Ejecutar -->" spellcheck="false"></textarea>
+    </div>
+
+    <div class="divider" id="divider"></div>
+
+    <div class="pane" id="panePreview">
+      <div class="pane-header">
+        <span class="pane-title preview">▶ Vista previa</span>
+      </div>
+      <div class="preview-empty" id="emptyDesktop">
+        <div class="icon">▶</div>
+        <p>Pulsa <strong>Ejecutar</strong> para ver el resultado.</p>
+      </div>
+      <iframe id="frame-desktop" style="display:none;"></iframe>
+    </div>
+
+  </div>
+
+  <div class="statusbar">
+    <span>HTML.run</span>
+    <span id="statusText">listo</span>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const isMobile = () => window.innerWidth < 768;
+
+  function getEditor() {
+    return isMobile()
+      ? document.getElementById('editor-mobile')
+      : document.getElementById('editor-desktop');
+  }
+
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel-mobile').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.getElementById('panel-' + name).classList.add('active');
+  }
+
+  function runCode() {
+    const code = getEditor().value.trim();
+    if (!code) { showToast('Escribe algo primero'); return; }
+
+    if (isMobile()) {
+      const frame = document.getElementById('frame-mobile');
+      frame.style.display = 'block';
+      document.getElementById('emptyMobile').style.display = 'none';
+      writeToFrame(frame, code);
+      showTab('preview');
+    } else {
+      const frame = document.getElementById('frame-desktop');
+      frame.style.display = 'block';
+      document.getElementById('emptyDesktop').style.display = 'none';
+      writeToFrame(frame, code);
+    }
+
+    document.getElementById('statusText').textContent =
+      '✓ ejecutado · ' + new Date().toLocaleTimeString('es-ES');
+    showToast('¡Ejecutado!');
+  }
+
+  function writeToFrame(frame, code) {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    doc.open();
+    doc.write(code);
+    doc.close();
+  }
+
+  function clearCode() {
+    getEditor().value = '';
+
+    // reset mobile
+    document.getElementById('frame-mobile').style.display = 'none';
+    document.getElementById('emptyMobile').style.display = 'flex';
+
+    // reset desktop
+    document.getElementById('frame-desktop').style.display = 'none';
+    document.getElementById('emptyDesktop').style.display = 'flex';
+
+    document.getElementById('statusText').textContent = 'listo';
+    if (isMobile()) showTab('code');
+    showToast('Limpiado');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  // Ctrl+Enter para ejecutar
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') runCode();
+  });
+
+  // Divisor arrastrable (PC)
+  const divider = document.getElementById('divider');
+  const paneEditor = document.getElementById('paneEditor');
+  const panePreview = document.getElementById('panePreview');
+  let dragging = false;
+
+  divider.addEventListener('mousedown', e => {
+    dragging = true;
+    e.preventDefault();
+    // Cubre los iframes para que no capturen el ratón
+    document.querySelectorAll('iframe').forEach(f => {
+      f.style.pointerEvents = 'none';
+    });
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const container = document.getElementById('desktopPanels');
+    const rect = container.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    if (pct > 20 && pct < 80) {
+      paneEditor.style.flex = 'none';
+      paneEditor.style.width = pct + '%';
+      panePreview.style.flex = '1';
+      panePreview.style.width = 'auto';
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    // Restaura los iframes
+    document.querySelectorAll('iframe').forEach(f => {
+      f.style.pointerEvents = 'auto';
+    });
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+  });
+</script>
+</body>
+</html>
